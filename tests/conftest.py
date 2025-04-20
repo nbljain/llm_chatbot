@@ -13,7 +13,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Add the project root directory to the path so we can import our modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+)
 
 from src.backend.api import app
 
@@ -90,7 +92,11 @@ def mock_openai_response(monkeypatch):
             self.status_code = status_code
 
         def json(self):
-            return {"choices": [{"message": {"content": "SELECT * FROM employees;"}}]}
+            return {
+                "choices": [
+                    {"message": {"content": "SELECT * FROM employees;"}}
+                ]
+            }
 
     # Return the mock response object
     return MockResponse()

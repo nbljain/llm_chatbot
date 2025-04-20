@@ -11,7 +11,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Add the project root directory to the path so we can import our modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+)
 
 
 def test_root_endpoint(test_client):
@@ -57,11 +59,17 @@ def test_query_endpoint_with_simple_question(test_client, monkeypatch):
     def mock_generate_answer(question, sql_query, query_results):
         return "Here are the first 5 employees."
 
-    monkeypatch.setattr("src.backend.api.generate_sql_query", mock_generate_sql_query)
-    monkeypatch.setattr("src.backend.api.generate_answer", mock_generate_answer)
+    monkeypatch.setattr(
+        "src.backend.api.generate_sql_query", mock_generate_sql_query
+    )
+    monkeypatch.setattr(
+        "src.backend.api.generate_answer", mock_generate_answer
+    )
 
     # Test the query endpoint
-    response = test_client.post("/query", json={"question": "Show me some employees"})
+    response = test_client.post(
+        "/query", json={"question": "Show me some employees"}
+    )
 
     assert response.status_code == 200
     result = response.json()
@@ -78,7 +86,9 @@ def test_query_endpoint_with_error(test_client, monkeypatch):
     def mock_generate_sql_query(question):
         return "SELECT * FROM nonexistent_table"
 
-    monkeypatch.setattr("src.backend.api.generate_sql_query", mock_generate_sql_query)
+    monkeypatch.setattr(
+        "src.backend.api.generate_sql_query", mock_generate_sql_query
+    )
 
     # Test the query endpoint
     response = test_client.post(

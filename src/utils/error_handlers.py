@@ -215,7 +215,9 @@ def format_error_response(
         Dict containing standardized error response
     """
     # Get exception details
-    error_category = getattr(exception, "error_category", ErrorCategory.UNKNOWN)
+    error_category = getattr(
+        exception, "error_category", ErrorCategory.UNKNOWN
+    )
     error_code = getattr(exception, "error_code", None)
     status_code = getattr(exception, "status_code", 500)
     details = getattr(exception, "details", None)
@@ -259,7 +261,9 @@ def setup_error_handlers(app: FastAPI, debug_mode: bool = False):
     """
 
     @app.exception_handler(SQLChatbotError)
-    async def sqlchatbot_exception_handler(request: Request, exc: SQLChatbotError):
+    async def sqlchatbot_exception_handler(
+        request: Request, exc: SQLChatbotError
+    ):
         """Handle custom SQL Chatbot exceptions"""
         # Get request details for logging
         client_host = request.client.host if request.client else "unknown"
@@ -318,7 +322,9 @@ def setup_error_handlers(app: FastAPI, debug_mode: bool = False):
         )
 
     @app.exception_handler(HTTPException)
-    async def custom_http_exception_handler(request: Request, exc: HTTPException):
+    async def custom_http_exception_handler(
+        request: Request, exc: HTTPException
+    ):
         """Handle FastAPI HTTP exceptions"""
         # Log HTTP exceptions
         logger.warning(

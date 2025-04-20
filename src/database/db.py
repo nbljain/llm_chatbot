@@ -210,7 +210,9 @@ def execute_sql_query(query: str) -> Dict[str, Any]:
     # Log query with limited length to avoid logging huge queries
     max_log_length = 500
     safe_query = (
-        query[:max_log_length] + "..." if len(query) > max_log_length else query
+        query[:max_log_length] + "..."
+        if len(query) > max_log_length
+        else query
     )
     logger.info(f"Executing SQL query: {safe_query}")
 
@@ -229,7 +231,10 @@ def execute_sql_query(query: str) -> Dict[str, Any]:
             # Log execution metrics
             logger.info(
                 f"Query executed successfully in {execution_time:.2f}s with {len(rows)} results",
-                extra={"execution_time": execution_time, "result_count": len(rows)},
+                extra={
+                    "execution_time": execution_time,
+                    "result_count": len(rows),
+                },
             )
 
             return {"success": True, "data": rows}
@@ -264,4 +269,7 @@ def execute_sql_query(query: str) -> Dict[str, Any]:
             f"Unexpected error executing query: {error_message}",
             extra={"query": safe_query},
         )
-        return {"success": False, "error": f"Unexpected error: {error_message}"}
+        return {
+            "success": False,
+            "error": f"Unexpected error: {error_message}",
+        }

@@ -11,7 +11,9 @@ import tempfile
 import pytest
 
 # Add the project root directory to the path so we can import our modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+)
 
 from src.database.auth import (
     authenticate_user,

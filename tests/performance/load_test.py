@@ -15,7 +15,9 @@ import time
 from typing import Any, Dict, Optional
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+)
 
 try:
     from locust import HttpUser, between, task
@@ -140,7 +142,9 @@ def run_standalone_test():
     print(f"Testing POST /api/schema ({iterations} iterations)")
     for i in range(iterations):
         start_time = time.time()
-        response = requests.post(f"{base_url}/api/schema", json={"table_name": None})
+        response = requests.post(
+            f"{base_url}/api/schema", json={"table_name": None}
+        )
         end_time = time.time()
         if response.status_code == 200:
             results["get_schema"].append((end_time - start_time) * 1000)  # ms
@@ -154,7 +158,9 @@ def run_standalone_test():
         )
         end_time = time.time()
         if response.status_code == 200:
-            results["simple_query"].append((end_time - start_time) * 1000)  # ms
+            results["simple_query"].append(
+                (end_time - start_time) * 1000
+            )  # ms
 
     # Complex query test
     print(f"Testing complex query ({iterations} iterations)")
@@ -166,7 +172,9 @@ def run_standalone_test():
         )
         end_time = time.time()
         if response.status_code == 200:
-            results["complex_query"].append((end_time - start_time) * 1000)  # ms
+            results["complex_query"].append(
+                (end_time - start_time) * 1000
+            )  # ms
 
     # Generate report
     report = {"summary": {}, "details": results}
@@ -192,7 +200,9 @@ def run_standalone_test():
     with open("performance-report.html", "w") as f:
         f.write("<html><head><title>SQL Chatbot Performance Report</title>")
         f.write("<style>body{font-family:sans-serif;margin:20px;}")
-        f.write("table{border-collapse:collapse;width:100%;margin-bottom:20px;}")
+        f.write(
+            "table{border-collapse:collapse;width:100%;margin-bottom:20px;}"
+        )
         f.write("th,td{border:1px solid #ddd;padding:8px;text-align:left;}")
         f.write("th{background-color:#f2f2f2;}")
         f.write("tr:nth-child(even){background-color:#f9f9f9;}")
@@ -238,7 +248,9 @@ def run_standalone_test():
             print(f"  {test_name}:")
             print(f"    - Average: {metrics['avg_ms']:.2f} ms")
             print(f"    - Median: {metrics['median_ms']:.2f} ms")
-            print(f"    - Min/Max: {metrics['min_ms']:.2f}/{metrics['max_ms']:.2f} ms")
+            print(
+                f"    - Min/Max: {metrics['min_ms']:.2f}/{metrics['max_ms']:.2f} ms"
+            )
         else:
             print(f"  {test_name}: {metrics['error']}")
 

@@ -10,9 +10,15 @@ import sys
 import pytest
 
 # Add the project root directory to the path so we can import our modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+)
 
-from src.database.db import execute_sql_query, get_table_names, get_table_schema
+from src.database.db import (
+    execute_sql_query,
+    get_table_names,
+    get_table_schema,
+)
 from src.utils.db_init import initialize_database
 
 
@@ -53,7 +59,9 @@ def test_execute_sql_query(test_db, monkeypatch):
     monkeypatch.setattr("src.database.db.DATABASE_URL", f"sqlite:///{test_db}")
 
     # Execute a simple query
-    result = execute_sql_query("SELECT * FROM employees WHERE first_name = 'Test'")
+    result = execute_sql_query(
+        "SELECT * FROM employees WHERE first_name = 'Test'"
+    )
 
     # Verify the query was successful
     assert result["success"] is True

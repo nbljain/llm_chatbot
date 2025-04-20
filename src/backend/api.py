@@ -16,7 +16,11 @@ from src.backend.nlp import (
     generate_sql_query,
     update_conversation_context,
 )
-from src.database.db import execute_sql_query, get_table_names, get_table_schema
+from src.database.db import (
+    execute_sql_query,
+    get_table_names,
+    get_table_schema,
+)
 from src.utils.error_handlers import (
     AuthenticationError,
     DatabaseError,
@@ -34,7 +38,9 @@ logger = get_logger(__name__)
 app = FastAPI(title="SQL Chatbot API")
 
 # Set up error handlers
-setup_error_handlers(app, debug_mode=os.environ.get("DEBUG", "false").lower() == "true")
+setup_error_handlers(
+    app, debug_mode=os.environ.get("DEBUG", "false").lower() == "true"
+)
 
 # Add CORS middleware
 app.add_middleware(
@@ -73,7 +79,10 @@ async def add_request_id(request: Request, call_next):
         # Log response status
         logger.info(
             f"Response {request_id}: {response.status_code}",
-            extra={"request_id": request_id, "status_code": response.status_code},
+            extra={
+                "request_id": request_id,
+                "status_code": response.status_code,
+            },
         )
 
         return response
@@ -153,7 +162,8 @@ async def get_tables(request: Request):
         return {"tables": tables}
     except Exception as e:
         logger.error(
-            f"Error retrieving table names: {str(e)}", extra={"request_id": request_id}
+            f"Error retrieving table names: {str(e)}",
+            extra={"request_id": request_id},
         )
         raise DatabaseError(
             message="Failed to retrieve database tables",
@@ -201,7 +211,10 @@ async def get_schema(request: SchemaRequest, req: Request):
             if not schema:
                 logger.warning(
                     f"Table {request.table_name} not found",
-                    extra={"request_id": request_id, "table_name": request.table_name},
+                    extra={
+                        "request_id": request_id,
+                        "table_name": request.table_name,
+                    },
                 )
                 raise ValidationError(
                     message=f"Table {request.table_name} not found",
@@ -211,7 +224,10 @@ async def get_schema(request: SchemaRequest, req: Request):
 
             logger.debug(
                 f"Retrieved schema for table {request.table_name}",
-                extra={"request_id": request_id, "table_name": request.table_name},
+                extra={
+                    "request_id": request_id,
+                    "table_name": request.table_name,
+                },
             )
             return {"db_schema": {request.table_name: schema}}
         else:
@@ -231,7 +247,10 @@ async def get_schema(request: SchemaRequest, req: Request):
 
             logger.debug(
                 f"Retrieved schemas for {len(full_schema)} tables",
-                extra={"request_id": request_id, "tables_count": len(full_schema)},
+                extra={
+                    "request_id": request_id,
+                    "tables_count": len(full_schema),
+                },
             )
             return {"db_schema": full_schema}
     except ValidationError:
@@ -320,7 +339,8 @@ async def process_query(request: QueryRequest, req: Request):
 
         # Execute the generated SQL
         logger.debug(
-            f"Executing SQL query", extra={"request_id": request_id, "user_id": user_id}
+            f"Executing SQL query",
+            extra={"request_id": request_id, "user_id": user_id},
         )
         query_result = execute_sql_query(sql_result["sql"])
 

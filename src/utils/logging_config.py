@@ -13,7 +13,10 @@ from pathlib import Path
 
 
 def setup_logging(
-    log_level=logging.INFO, log_to_file=True, logs_dir="logs", app_name="sql_chatbot"
+    log_level=logging.INFO,
+    log_to_file=True,
+    logs_dir="logs",
+    app_name="sql_chatbot",
 ):
     """Set up application logging with rotating file handler and console output
 
@@ -36,7 +39,9 @@ def setup_logging(
     console_handler.setLevel(log_level)
 
     # Create formatter
-    log_format = "[%(asctime)s] [%(levelname)s] [%(name)s:%(lineno)d] %(message)s"
+    log_format = (
+        "[%(asctime)s] [%(levelname)s] [%(name)s:%(lineno)d] %(message)s"
+    )
     formatter = logging.Formatter(log_format)
     console_handler.setFormatter(formatter)
 
@@ -66,7 +71,9 @@ def setup_logging(
     logging.getLogger("streamlit").setLevel(logging.WARNING)
 
     # Log startup message
-    logger.info(f"Logging initialized at level {logging.getLevelName(log_level)}")
+    logger.info(
+        f"Logging initialized at level {logging.getLevelName(log_level)}"
+    )
     if log_to_file:
         logger.info(f"Log file: {log_file}")
 

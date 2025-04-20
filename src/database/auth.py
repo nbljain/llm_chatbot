@@ -19,7 +19,8 @@ else:
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,9 @@ def register_user(username: str, email: str, password: str) -> Dict[str, Any]:
 
         try:
             # Check if the username already exists
-            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            cursor.execute(
+                "SELECT id FROM users WHERE username = ?", (username,)
+            )
             if cursor.fetchone():
                 return {"success": False, "error": "Username already exists"}
 
@@ -141,7 +144,9 @@ def register_user(username: str, email: str, password: str) -> Dict[str, Any]:
             conn.commit()
 
             # Get the user ID
-            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
+            cursor.execute(
+                "SELECT id FROM users WHERE username = ?", (username,)
+            )
             user_id = cursor.fetchone()[0]
 
             return {
@@ -190,7 +195,10 @@ def authenticate_user(username: str, password: str) -> Dict[str, Any]:
             user = cursor.fetchone()
 
             if not user:
-                return {"success": False, "error": "Invalid username or password"}
+                return {
+                    "success": False,
+                    "error": "Invalid username or password",
+                }
 
             # Check the password
             user_salt = user["salt"]
@@ -200,7 +208,10 @@ def authenticate_user(username: str, password: str) -> Dict[str, Any]:
             password_data = hash_password(password, user_salt)
 
             if password_data["password_hash"] != stored_hash:
-                return {"success": False, "error": "Invalid username or password"}
+                return {
+                    "success": False,
+                    "error": "Invalid username or password",
+                }
 
             # Update last login time
             cursor.execute(
@@ -274,7 +285,10 @@ def update_user_password(
             password_data = hash_password(current_password, user_salt)
 
             if password_data["password_hash"] != stored_hash:
-                return {"success": False, "error": "Current password is incorrect"}
+                return {
+                    "success": False,
+                    "error": "Current password is incorrect",
+                }
 
             # Hash the new password
             new_password_data = hash_password(new_password)

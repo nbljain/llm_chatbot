@@ -21,7 +21,9 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
 if DB_TYPE == "sqlite":
     DATABASE_URL = f"sqlite:///{DB_NAME}"
 elif DB_TYPE == "postgresql":
-    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DATABASE_URL = (
+        f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
 else:
     raise ValueError(f"Unsupported database type: {DB_TYPE}")
 
@@ -43,7 +45,9 @@ ENDPOINT_SCHEMA = "/schema"
 ENDPOINT_QUERY = "/query"
 
 # Authentication settings
-AUTH_TOKEN_EXPIRY_MINUTES = int(os.environ.get("AUTH_TOKEN_EXPIRY_MINUTES", "60"))
+AUTH_TOKEN_EXPIRY_MINUTES = int(
+    os.environ.get("AUTH_TOKEN_EXPIRY_MINUTES", "60")
+)
 
 # NLP settings
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")

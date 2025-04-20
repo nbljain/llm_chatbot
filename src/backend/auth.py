@@ -9,11 +9,16 @@ from pydantic import BaseModel, EmailStr
 from src.config import AUTH_TOKEN_EXPIRY_MINUTES, ENDPOINT_AUTH
 
 # Import from project
-from src.database.auth import authenticate_user, register_user, update_user_password
+from src.database.auth import (
+    authenticate_user,
+    register_user,
+    update_user_password,
+)
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 

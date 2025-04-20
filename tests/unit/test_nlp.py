@@ -10,9 +10,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Add the project root directory to the path so we can import our modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+)
 
-from src.backend.nlp import generate_answer, generate_sql_query, get_table_schema_string
+from src.backend.nlp import (
+    generate_answer,
+    generate_sql_query,
+    get_table_schema_string,
+)
 
 
 def test_get_table_schema_string(monkeypatch):
@@ -86,9 +92,21 @@ def test_generate_answer(mock_get_llm):
     question = "How many engineers do we have?"
     sql_query = "SELECT * FROM employees WHERE department = 'Engineering'"
     query_results = [
-        {"first_name": "John", "last_name": "Smith", "department": "Engineering"},
-        {"first_name": "Michael", "last_name": "Williams", "department": "Engineering"},
-        {"first_name": "Robert", "last_name": "Miller", "department": "Engineering"},
+        {
+            "first_name": "John",
+            "last_name": "Smith",
+            "department": "Engineering",
+        },
+        {
+            "first_name": "Michael",
+            "last_name": "Williams",
+            "department": "Engineering",
+        },
+        {
+            "first_name": "Robert",
+            "last_name": "Miller",
+            "department": "Engineering",
+        },
     ]
 
     # Generate answer
@@ -101,4 +119,6 @@ def test_generate_answer(mock_get_llm):
     mock_llm.invoke.assert_called_once()
     args = mock_llm.invoke.call_args[0][0]
     assert "How many engineers do we have?" in str(args)
-    assert "SELECT * FROM employees WHERE department = 'Engineering'" in str(args)
+    assert "SELECT * FROM employees WHERE department = 'Engineering'" in str(
+        args
+    )

@@ -14,7 +14,9 @@ import pandas as pd
 import requests
 
 # Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+)
 
 # Import configuration
 from src.config import API_URL
@@ -63,7 +65,9 @@ def query_backend(endpoint: str, data: Dict = {}, method: str = "GET") -> Dict:
     # Log request information but limit data logging for sensitive/large payloads
     if endpoint == "query" and data and "question" in data:
         question = data["question"]
-        truncated_question = (question[:50] + "...") if len(question) > 50 else question
+        truncated_question = (
+            (question[:50] + "...") if len(question) > 50 else question
+        )
         log_data = {**data, "question": truncated_question}
     else:
         log_data = data
@@ -99,7 +103,9 @@ def query_backend(endpoint: str, data: Dict = {}, method: str = "GET") -> Dict:
             # Handle different HTTP status codes with more user-friendly messages
             if response.status_code == 401:
                 st.sidebar.warning("Authentication issue detected:")
-                st.sidebar.info(f"Token in session: {'Yes' if auth_token else 'No'}")
+                st.sidebar.info(
+                    f"Token in session: {'Yes' if auth_token else 'No'}"
+                )
                 st.sidebar.info(f"Headers sent: {headers}")
                 st.sidebar.info(f"Cookies sent: {cookies}")
 
@@ -118,7 +124,10 @@ def query_backend(endpoint: str, data: Dict = {}, method: str = "GET") -> Dict:
                 st.error(
                     f"API endpoint '{endpoint}' not found. The service might be down."
                 )
-                return {"success": False, "error": f"Endpoint not found: {endpoint}"}
+                return {
+                    "success": False,
+                    "error": f"Endpoint not found: {endpoint}",
+                }
 
             elif response.status_code >= 500:
                 # For server errors, retry a few times
@@ -147,7 +156,9 @@ def query_backend(endpoint: str, data: Dict = {}, method: str = "GET") -> Dict:
                     st.error(f"Request error: {error_message}")
                     return {"success": False, "error": error_message}
                 except Exception:
-                    st.error(f"Request failed with status code {response.status_code}")
+                    st.error(
+                        f"Request failed with status code {response.status_code}"
+                    )
                     return {
                         "success": False,
                         "error": f"Error {response.status_code}: {response.text}",
@@ -212,7 +223,9 @@ def detect_chart_type(df: pd.DataFrame) -> str:
 
     # Count number of columns by data type
     num_columns = df.select_dtypes(include=["number"]).columns
-    cat_columns = df.select_dtypes(include=["object", "string", "category"]).columns
+    cat_columns = df.select_dtypes(
+        include=["object", "string", "category"]
+    ).columns
     date_columns = df.select_dtypes(include=["datetime"]).columns
 
     # If we have exactly one category column and one numeric column, bar chart is good
@@ -269,7 +282,9 @@ def display_results(results: Dict[str, Any]) -> None:
         # Show data table with styling
         with st.expander("Data Table", expanded=True):
             st.dataframe(df, use_container_width=True, hide_index=True)
-            st.caption(f"Found {len(data)} {'row' if len(data) == 1 else 'rows'}")
+            st.caption(
+                f"Found {len(data)} {'row' if len(data) == 1 else 'rows'}"
+            )
 
         # Visualization section
         st.subheader("Visualizations")
@@ -301,7 +316,9 @@ def display_results(results: Dict[str, Any]) -> None:
         ).columns.tolist()
 
         # Create tabs for different visualization options
-        viz_tabs = st.tabs(["Chart Selection", "Custom Chart", "Data Statistics"])
+        viz_tabs = st.tabs(
+            ["Chart Selection", "Custom Chart", "Data Statistics"]
+        )
 
         with viz_tabs[0]:
             # Recommended chart based on data
@@ -318,16 +335,22 @@ def display_results(results: Dict[str, Any]) -> None:
                 elif chart_type == "line":
                     # Use the first column as index if it looks like a good candidate
                     index_col = df.columns[0]
-                    line_cols = num_columns[:3]  # Limit to first 3 numeric columns
+                    line_cols = num_columns[
+                        :3
+                    ]  # Limit to first 3 numeric columns
                     st.line_chart(df[line_cols])
-                    st.caption(f"Line chart showing trends in {', '.join(line_cols)}")
+                    st.caption(
+                        f"Line chart showing trends in {', '.join(line_cols)}"
+                    )
 
                 elif chart_type == "scatter":
                     st.subheader("Scatter Plot")
                     x_col = num_columns[0]
                     y_col = num_columns[1]
                     fig = {
-                        "data": [{"type": "scatter", "x": df[x_col], "y": df[y_col]}],
+                        "data": [
+                            {"type": "scatter", "x": df[x_col], "y": df[y_col]}
+                        ],
                         "layout": {
                             "title": f"{y_col} vs {x_col}",
                             "xaxis": {"title": x_col},
@@ -353,7 +376,9 @@ def display_results(results: Dict[str, Any]) -> None:
                     }
                     st.plotly_chart(fig, use_container_width=True)
             else:
-                st.info("No specific chart type automatically detected for this data")
+                st.info(
+                    "No specific chart type automatically detected for this data"
+                )
 
         with viz_tabs[1]:
             st.subheader("Create Custom Chart")
@@ -371,15 +396,23 @@ def display_results(results: Dict[str, Any]) -> None:
 
                 if selected_chart == "Bar Chart":
                     if cat_columns:
-                        x_axis = st.selectbox("Select X-axis (Categories)", cat_columns)
-                        y_axis = st.selectbox("Select Y-axis (Values)", num_columns)
+                        x_axis = st.selectbox(
+                            "Select X-axis (Categories)", cat_columns
+                        )
+                        y_axis = st.selectbox(
+                            "Select Y-axis (Values)", num_columns
+                        )
                         st.bar_chart(df.set_index(x_axis)[y_axis])
                     else:
-                        st.warning("Bar charts need categorical data for the x-axis")
+                        st.warning(
+                            "Bar charts need categorical data for the x-axis"
+                        )
 
                 elif selected_chart == "Line Chart":
                     selected_columns = st.multiselect(
-                        "Select columns to plot", num_columns, default=num_columns[:2]
+                        "Select columns to plot",
+                        num_columns,
+                        default=num_columns[:2],
                     )
                     if selected_columns:
                         st.line_chart(df[selected_columns])
@@ -396,7 +429,11 @@ def display_results(results: Dict[str, Any]) -> None:
                         )
                         fig = {
                             "data": [
-                                {"type": "scatter", "x": df[x_axis], "y": df[y_axis]}
+                                {
+                                    "type": "scatter",
+                                    "x": df[x_axis],
+                                    "y": df[y_axis],
+                                }
                             ],
                             "layout": {
                                 "title": f"{y_axis} vs {x_axis}",
@@ -406,15 +443,21 @@ def display_results(results: Dict[str, Any]) -> None:
                         }
                         st.plotly_chart(fig, use_container_width=True)
                     else:
-                        st.warning("Scatter plots require at least two numeric columns")
+                        st.warning(
+                            "Scatter plots require at least two numeric columns"
+                        )
 
                 elif selected_chart == "Pie Chart":
                     if cat_columns and num_columns:
-                        cat_col = st.selectbox("Select Categories", cat_columns)
+                        cat_col = st.selectbox(
+                            "Select Categories", cat_columns
+                        )
                         val_col = st.selectbox("Select Values", num_columns)
 
                         # Group by category and sum values
-                        pie_data = df.groupby(cat_col)[val_col].sum().reset_index()
+                        pie_data = (
+                            df.groupby(cat_col)[val_col].sum().reset_index()
+                        )
 
                         fig = {
                             "data": [
@@ -429,16 +472,24 @@ def display_results(results: Dict[str, Any]) -> None:
                         }
                         st.plotly_chart(fig, use_container_width=True)
                     else:
-                        st.warning("Pie charts need both categorical and numeric data")
+                        st.warning(
+                            "Pie charts need both categorical and numeric data"
+                        )
 
                 elif selected_chart == "Histogram":
-                    num_col = st.selectbox("Select Numeric Column", num_columns)
+                    num_col = st.selectbox(
+                        "Select Numeric Column", num_columns
+                    )
                     bins = st.slider(
                         "Number of bins", min_value=5, max_value=50, value=20
                     )
                     fig = {
                         "data": [
-                            {"type": "histogram", "x": df[num_col], "nbinsx": bins}
+                            {
+                                "type": "histogram",
+                                "x": df[num_col],
+                                "nbinsx": bins,
+                            }
                         ],
                         "layout": {"title": f"Distribution of {num_col}"},
                     }
@@ -452,7 +503,9 @@ def display_results(results: Dict[str, Any]) -> None:
             # Show basic statistics for numeric columns
             if num_columns:
                 st.write("Numeric Columns Statistics")
-                st.dataframe(df[num_columns].describe(), use_container_width=True)
+                st.dataframe(
+                    df[num_columns].describe(), use_container_width=True
+                )
 
             # Show value counts for categorical columns (top 10)
             if cat_columns:
@@ -485,7 +538,9 @@ with st.sidebar:
 
     # Show logged in user and logout button
     if st.session_state.get("is_authenticated", False):
-        st.write(f"Logged in as: {st.session_state.user.get('username', 'User')}")
+        st.write(
+            f"Logged in as: {st.session_state.user.get('username', 'User')}"
+        )
         if st.button("Logout"):
             logout_user()
             st.rerun()
@@ -541,7 +596,9 @@ for i, chat in enumerate(st.session_state.chat_history):
 
                     # Show data table with expander
                     with st.expander("Data Results", expanded=True):
-                        st.dataframe(df, use_container_width=True, hide_index=True)
+                        st.dataframe(
+                            df, use_container_width=True, hide_index=True
+                        )
                         st.caption(
                             f"Found {len(chat['data'])} {'row' if len(chat['data']) == 1 else 'rows'}"
                         )
@@ -583,7 +640,11 @@ for i, chat in enumerate(st.session_state.chat_history):
 
                         # Create visualization based on detected type
                         if chart_type != "none" and num_columns:
-                            if chart_type == "bar" and cat_columns and num_columns:
+                            if (
+                                chart_type == "bar"
+                                and cat_columns
+                                and num_columns
+                            ):
                                 cat_col = cat_columns[0]
                                 num_col = num_columns[0]
                                 st.bar_chart(df.set_index(cat_col)[num_col])
@@ -594,7 +655,10 @@ for i, chat in enumerate(st.session_state.chat_history):
                                 ]  # Limit to first 3 numeric columns
                                 st.line_chart(df[line_cols])
 
-                            elif chart_type == "scatter" and len(num_columns) >= 2:
+                            elif (
+                                chart_type == "scatter"
+                                and len(num_columns) >= 2
+                            ):
                                 x_col = num_columns[0]
                                 y_col = num_columns[1]
                                 fig = {
@@ -619,14 +683,20 @@ for i, chat in enumerate(st.session_state.chat_history):
                                 and len(num_columns) >= 2
                             ):
                                 cat_col = cat_columns[0]
-                                chart_data = df.set_index(cat_col)[num_columns[:3]]
+                                chart_data = df.set_index(cat_col)[
+                                    num_columns[:3]
+                                ]
                                 st.bar_chart(chart_data)
 
                             elif chart_type == "histogram" and num_columns:
                                 num_col = num_columns[0]
                                 fig = {
-                                    "data": [{"type": "histogram", "x": df[num_col]}],
-                                    "layout": {"title": f"Distribution of {num_col}"},
+                                    "data": [
+                                        {"type": "histogram", "x": df[num_col]}
+                                    ],
+                                    "layout": {
+                                        "title": f"Distribution of {num_col}"
+                                    },
                                 }
                                 st.plotly_chart(fig, use_container_width=True)
 
@@ -636,7 +706,9 @@ for i, chat in enumerate(st.session_state.chat_history):
                                     st.write("Numeric Statistics")
                                     st.dataframe(df[num_columns].describe())
                         else:
-                            st.info("No suitable visualization detected for this data")
+                            st.info(
+                                "No suitable visualization detected for this data"
+                            )
 
                 elif "error" in chat:
                     st.error(chat["error"])
@@ -684,13 +756,17 @@ user_input = st.text_area(
 if st.button("Submit Question"):
     if user_input:
         # Add user message to chat history
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        st.session_state.chat_history.append(
+            {"role": "user", "content": user_input}
+        )
 
         # Show loading spinner
         with st.spinner("Generating SQL and fetching results..."):
             try:
                 # Query the backend
-                result = query_backend("query", {"question": user_input}, method="POST")
+                result = query_backend(
+                    "query", {"question": user_input}, method="POST"
+                )
 
                 # Log raw response for debugging
                 st.sidebar.write("Raw API Response:", result)
@@ -716,7 +792,9 @@ if st.button("Submit Question"):
                 st.session_state.chat_history.append(chat_response)
             except Exception as e:
                 st.error(f"Error processing query: {str(e)}")
-                st.sidebar.error(f"Exception details: {traceback.format_exc()}")
+                st.sidebar.error(
+                    f"Exception details: {traceback.format_exc()}"
+                )
 
                 # Add error to chat history
                 chat_response = {

@@ -35,7 +35,9 @@ def login_form() -> None:
                 time.sleep(1)  # Small delay to show success message
                 st.rerun()
             else:
-                st.error(f"Login failed: {response.get('error', 'Unknown error')}")
+                st.error(
+                    f"Login failed: {response.get('error', 'Unknown error')}"
+                )
 
 
 def register_form() -> None:
@@ -45,7 +47,9 @@ def register_form() -> None:
     with st.form("register_form"):
         username = st.text_input("Username (at least 3 characters)")
         email = st.text_input("Email")
-        password = st.text_input("Password (at least 6 characters)", type="password")
+        password = st.text_input(
+            "Password (at least 6 characters)", type="password"
+        )
         confirm_password = st.text_input("Confirm Password", type="password")
         submit_button = st.form_submit_button("Register")
 
@@ -98,7 +102,10 @@ def login_user(username: str, password: str) -> Dict[str, Any]:
             return response.json()
         else:
             # Handle HTTP errors
-            return {"success": False, "error": f"HTTP Error: {response.status_code}"}
+            return {
+                "success": False,
+                "error": f"HTTP Error: {response.status_code}",
+            }
     except Exception as e:
         # Handle network or other errors
         return {"success": False, "error": str(e)}
@@ -117,7 +124,10 @@ def register_user(username: str, email: str, password: str) -> Dict[str, Any]:
             return response.json()
         else:
             # Handle HTTP errors
-            return {"success": False, "error": f"HTTP Error: {response.status_code}"}
+            return {
+                "success": False,
+                "error": f"HTTP Error: {response.status_code}",
+            }
     except Exception as e:
         # Handle network or other errors
         return {"success": False, "error": str(e)}
@@ -197,7 +207,10 @@ def update_query_backend(original_query_backend):
                 )
             else:  # POST
                 response = requests.post(
-                    f"{API_URL}/{endpoint}", json=data, cookies=cookies, timeout=10
+                    f"{API_URL}/{endpoint}",
+                    json=data,
+                    cookies=cookies,
+                    timeout=10,
                 )
 
             # Log the response status
@@ -217,7 +230,9 @@ def update_query_backend(original_query_backend):
             return response.json()
         except Exception as e:
             st.error(f"Error connecting to backend: {str(e)}")
-            st.sidebar.error(f"Backend error details: {type(e).__name__}: {str(e)}")
+            st.sidebar.error(
+                f"Backend error details: {type(e).__name__}: {str(e)}"
+            )
             return {"success": False, "error": str(e)}
 
     # Return the authenticated function

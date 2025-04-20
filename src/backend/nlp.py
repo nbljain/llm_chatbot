@@ -23,7 +23,8 @@ user_conversation_context = {}
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -113,9 +114,13 @@ Your task is to generate a valid SQLite SQL query based on the user's question.
 """
 
     # Create the chat prompt template
-    system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
+    system_message_prompt = SystemMessagePromptTemplate.from_template(
+        system_template
+    )
     human_template = "{question}"
-    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+    human_message_prompt = HumanMessagePromptTemplate.from_template(
+        human_template
+    )
 
     chat_prompt = ChatPromptTemplate.from_messages(
         [system_message_prompt, human_message_prompt]
@@ -177,7 +182,9 @@ def update_conversation_context(
 
     # Keep only the last 5 interactions to limit memory usage
     if len(user_conversation_context[user_id]) > 5:
-        user_conversation_context[user_id] = user_conversation_context[user_id][-5:]
+        user_conversation_context[user_id] = user_conversation_context[
+            user_id
+        ][-5:]
 
     # Add to the conversation memory system
     if user_id in user_memories:
@@ -221,9 +228,13 @@ def generate_answer(question, sql_query, query_results, user_id=None):
                 for i, interaction in enumerate(
                     context[-3:]
                 ):  # Only include the last 3 interactions
-                    context_str += f"Question {i+1}: {interaction['question']}\n"
+                    context_str += (
+                        f"Question {i+1}: {interaction['question']}\n"
+                    )
                     context_str += f"SQL: {interaction['sql']}\n"
-                    context_str += f"Explanation: {interaction['explanation']}\n\n"
+                    context_str += (
+                        f"Explanation: {interaction['explanation']}\n\n"
+                    )
 
         # Define the prompt for generating the explanation
         prompt = (
@@ -265,7 +276,9 @@ def generate_answer(question, sql_query, query_results, user_id=None):
             "not clear from the data",
         ]
 
-        if any(phrase in explanation.lower() for phrase in uncertainty_phrases):
+        if any(
+            phrase in explanation.lower() for phrase in uncertainty_phrases
+        ):
             explanation = (
                 f"{explanation}\n\nPlease try asking a more specific question or "
                 "providing more details about what you're looking for."
@@ -297,7 +310,9 @@ def generate_sql_query(user_question, user_id=None):
                 for i, interaction in enumerate(
                     context[-3:]
                 ):  # Only include the last 3 interactions
-                    context_str += f"Question {i+1}: {interaction['question']}\n"
+                    context_str += (
+                        f"Question {i+1}: {interaction['question']}\n"
+                    )
                     context_str += f"SQL: {interaction['sql']}\n"
                     if interaction.get("results"):
                         context_str += f"Results: {json.dumps(interaction['results'], indent=2)[:200]}...\n"  # Truncate long results
@@ -359,7 +374,9 @@ def generate_sql_query(user_question, user_id=None):
             "drop",
             "explain",
         ]
-        first_word = generated_sql.split()[0].lower() if generated_sql.split() else ""
+        first_word = (
+            generated_sql.split()[0].lower() if generated_sql.split() else ""
+        )
 
         # If the response doesn't start with a SQL keyword, it's probably an explanation
         if first_word not in sql_keywords or generated_sql.startswith("To"):
