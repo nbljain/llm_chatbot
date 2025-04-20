@@ -1,0 +1,314 @@
+name: SQL Chatbot CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE: sql-chatbot
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
+
+      - name: Run flake8
+        run: poetry run flake8 src tests
+
+      - name: Run black
+        run: poetry run black --check src tests
+
+      - name: Run isort
+        run: poetry run isort --check src tests
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry safety
+          poetry install
+
+      - name: Check for vulnerable dependencies
+        run: |
+          poetry export -f requirements.txt --without-hashes > requirements.txt
+          safety check -r requirements.txt --full-report --output text > safety-report.txt || true
+
+      - name: Upload safety report
+        uses: actions/upload-artifact@v3
+        with:
+          name: safety-report
+          path: safety-report.txt
+
+      - name: Run bandit security scan
+        run: poetry run bandit -r src -f json -o bandit-report.json || true
+
+      - name: Upload bandit report
+        uses: actions/upload-artifact@v3
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
+
+      - name: Run unit tests
+        run: poetry run pytest tests/unit -v --cov=src --cov-report=xml
+
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [unit-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install
+
+      - name: Run integration tests
+        run: poetry run pytest tests/integration -v --cov=src --cov-report=xml
+
+      - name: Upload code coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: integrationtests
+
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry locust
+          poetry install
+
+      - name: Run performance tests
+        run: |
+          # Start the application in the background
+          python main.py &
+          PID=$!
+          # Wait for the application to start
+          sleep 20
+          # Run performance tests using the standalone function
+          poetry run python tests/performance/load_test.py
+          # Kill the application
+          kill $PID
+
+      - name: Upload performance report
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: performance-report.html
+
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [security-scan, unit-tests, integration-tests, performance-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.DOCKER_IMAGE }}:latest
+            ${{ secrets.ACR_LOGIN_SERVER }}/${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+          cache-from: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.DOCKER_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.DOCKER_IMAGE }}:buildcache,mode=max
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Set up kubelogin
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.0.24'
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+          admin: 'false'
+          use-kubelogin: 'true'
+
+      - name: Create OpenAI API Key secret
+        run: |
+          # Convert OPENAI_API_KEY to base64
+          echo "${{ secrets.OPENAI_API_KEY }}" | base64 > openai_api_key_base64.txt
+          export OPENAI_API_KEY_BASE64=$(cat openai_api_key_base64.txt)
+          
+          # Replace variables in Kubernetes manifest
+          export ACR_REGISTRY=${{ secrets.ACR_LOGIN_SERVER }}
+          export DOCKER_IMAGE=${{ env.DOCKER_IMAGE }}
+          envsubst < k8s/staging/deployment.yaml > deployment.yaml
+          
+          # Apply Kubernetes manifests
+          kubectl apply -f deployment.yaml
+          kubectl apply -f k8s/staging/service.yaml
+          kubectl apply -f k8s/staging/ingress.yaml
+
+      - name: Wait for deployment to be ready
+        run: |
+          kubectl rollout status deployment/sql-chatbot -n default
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Set up kubelogin
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.0.24'
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+          admin: 'false'
+          use-kubelogin: 'true'
+
+      - name: Create OpenAI API Key secret
+        run: |
+          # Convert OPENAI_API_KEY to base64
+          echo "${{ secrets.OPENAI_API_KEY }}" | base64 > openai_api_key_base64.txt
+          export OPENAI_API_KEY_BASE64=$(cat openai_api_key_base64.txt)
+          
+          # Replace variables in Kubernetes manifest
+          export ACR_REGISTRY=${{ secrets.ACR_LOGIN_SERVER }}
+          export DOCKER_IMAGE=${{ env.DOCKER_IMAGE }}
+          envsubst < k8s/production/deployment.yaml > deployment.yaml
+          
+          # Apply Kubernetes manifests
+          kubectl apply -f deployment.yaml
+          kubectl apply -f k8s/production/service.yaml
+          kubectl apply -f k8s/production/ingress.yaml
+
+      - name: Wait for deployment to be ready
+        run: |
+          kubectl rollout status deployment/sql-chatbot -n default
