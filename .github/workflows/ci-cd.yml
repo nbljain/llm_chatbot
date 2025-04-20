@@ -65,6 +65,13 @@ jobs:
           poetry export -f requirements.txt --without-hashes > requirements.txt
           safety check -r requirements.txt --full-report --output text > safety-report.txt || true
 
+      - name: Verify safety report
+        run: |
+          if [ ! -f safety-report.txt ]; then
+            echo "Safety report not generated!"
+            exit 1
+          fi
+
       - name: Upload safety report
         uses: actions/upload-artifact@v3
         with:
@@ -73,6 +80,13 @@ jobs:
 
       - name: Run bandit security scan
         run: poetry run bandit -r src -f json -o bandit-report.json || true
+
+      - name: Verify bandit report
+        run: |
+          if [ ! -f bandit-report.json ]; then
+            echo "Bandit report not generated!"
+            exit 1
+          fi
 
       - name: Upload bandit report
         uses: actions/upload-artifact@v3
