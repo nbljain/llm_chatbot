@@ -33,22 +33,22 @@ from src.frontend.auth import (
 # Function to fetch data from the backend API with improved error handling
 def query_backend(endpoint: str, data: Dict = {}, method: str = "GET") -> Dict:
     """Make a request to the backend API with robust error handling
-    
+
     Args:
         endpoint: API endpoint path (without leading /)
         data: Dict of parameters for GET or JSON body for POST
         method: HTTP method ("GET" or "POST")
-        
+
     Returns:
         Dict with API response or error information
     """
     # Constants for retry logic
     MAX_RETRIES = 3
     RETRY_DELAY = 1  # seconds
-    
+
     # Add debugging information
     st.sidebar.info(f"Connecting to: {API_URL}/{endpoint}")
-    
+
     # Get authentication token from session state
     auth_token = st.session_state.get("token")
 
@@ -59,7 +59,7 @@ def query_backend(endpoint: str, data: Dict = {}, method: str = "GET") -> Dict:
         # Include token in both cookies and Authorization header for maximum compatibility
         cookies = {"auth_token": auth_token}
         headers = {"Authorization": f"Bearer {auth_token}"}
-    
+
     # Log request information but limit data logging for sensitive/large payloads
     if endpoint == "query" and data and "question" in data:
         question = data["question"]
@@ -67,19 +67,19 @@ def query_backend(endpoint: str, data: Dict = {}, method: str = "GET") -> Dict:
         log_data = {**data, "question": truncated_question}
     else:
         log_data = data
-    
+
     st.sidebar.info(f"Request: {method} {endpoint} - Data: {log_data}")
-    
+
     # Implement retry logic for transient errors
     for attempt in range(MAX_RETRIES):
         try:
             if method == "GET":
                 response = requests.get(
-                    f"{API_URL}/{endpoint}", 
-                    headers=headers, 
-                    cookies=cookies, 
+                    f"{API_URL}/{endpoint}",
+                    headers=headers,
+                    cookies=cookies,
                     params=data,
-                    timeout=15  # Increased timeout
+                    timeout=15,  # Increased timeout
                 )
             else:  # POST
                 response = requests.post(
@@ -102,39 +102,57 @@ def query_backend(endpoint: str, data: Dict = {}, method: str = "GET") -> Dict:
                 st.sidebar.info(f"Token in session: {'Yes' if auth_token else 'No'}")
                 st.sidebar.info(f"Headers sent: {headers}")
                 st.sidebar.info(f"Cookies sent: {cookies}")
-                
+
                 # Clear authentication state
                 st.warning("Your session has expired. Please log in again.")
                 for key in ["is_authenticated", "token", "user"]:
                     if key in st.session_state:
                         del st.session_state[key]
-                return {"success": False, "error": "Authentication required", "auth_error": True}
-                
+                return {
+                    "success": False,
+                    "error": "Authentication required",
+                    "auth_error": True,
+                }
+
             elif response.status_code == 404:
-                st.error(f"API endpoint '{endpoint}' not found. The service might be down.")
+                st.error(
+                    f"API endpoint '{endpoint}' not found. The service might be down."
+                )
                 return {"success": False, "error": f"Endpoint not found: {endpoint}"}
-                
+
             elif response.status_code >= 500:
                 # For server errors, retry a few times
                 if attempt < MAX_RETRIES - 1:
-                    st.warning(f"Server error. Retrying... (Attempt {attempt+1}/{MAX_RETRIES})")
+                    st.warning(
+                        f"Server error. Retrying... (Attempt {attempt+1}/{MAX_RETRIES})"
+                    )
                     time.sleep(RETRY_DELAY)
                     continue
                 else:
-                    st.error("The server is experiencing issues. Please try again later.")
-                    return {"success": False, "error": f"Server error: {response.status_code}"}
-            
+                    st.error(
+                        "The server is experiencing issues. Please try again later."
+                    )
+                    return {
+                        "success": False,
+                        "error": f"Server error: {response.status_code}",
+                    }
+
             # For other errors, try to parse the error message from response
             elif response.status_code >= 400:
                 try:
                     error_json = response.json()
-                    error_message = error_json.get("error", f"Error {response.status_code}")
+                    error_message = error_json.get(
+                        "error", f"Error {response.status_code}"
+                    )
                     st.error(f"Request error: {error_message}")
                     return {"success": False, "error": error_message}
                 except Exception:
                     st.error(f"Request failed with status code {response.status_code}")
-                    return {"success": False, "error": f"Error {response.status_code}: {response.text}"}
-            
+                    return {
+                        "success": False,
+                        "error": f"Error {response.status_code}: {response.text}",
+                    }
+
             # Success case - parse JSON response
             try:
                 return response.json()
@@ -143,25 +161,39 @@ def query_backend(endpoint: str, data: Dict = {}, method: str = "GET") -> Dict:
                 st.sidebar.error(f"JSON parsing error: {str(e)}")
                 st.sidebar.error(f"Response content: {response.text[:500]}...")
                 return {"success": False, "error": "Invalid response format"}
-                
+
         except requests.exceptions.Timeout:
             # Handle timeout errors
             if attempt < MAX_RETRIES - 1:
-                st.warning(f"Request timed out. Retrying... (Attempt {attempt+1}/{MAX_RETRIES})")
+                st.warning(
+                    f"Request timed out. Retrying... (Attempt {attempt+1}/{MAX_RETRIES})"
+                )
                 time.sleep(RETRY_DELAY)
             else:
-                st.error("The request timed out. The server might be busy or experiencing issues.")
-                return {"success": False, "error": "Request timed out after multiple attempts"}
-                
+                st.error(
+                    "The request timed out. The server might be busy or experiencing issues."
+                )
+                return {
+                    "success": False,
+                    "error": "Request timed out after multiple attempts",
+                }
+
         except requests.exceptions.ConnectionError:
             # Handle connection errors
             if attempt < MAX_RETRIES - 1:
-                st.warning(f"Connection error. Retrying... (Attempt {attempt+1}/{MAX_RETRIES})")
+                st.warning(
+                    f"Connection error. Retrying... (Attempt {attempt+1}/{MAX_RETRIES})"
+                )
                 time.sleep(RETRY_DELAY)
             else:
-                st.error("Unable to connect to the API. The backend server might be down.")
-                return {"success": False, "error": "Connection error: Unable to reach API server"}
-                
+                st.error(
+                    "Unable to connect to the API. The backend server might be down."
+                )
+                return {
+                    "success": False,
+                    "error": "Connection error: Unable to reach API server",
+                }
+
         except Exception as e:
             # Handle all other exceptions
             error_type = type(e).__name__
@@ -241,7 +273,7 @@ def display_results(results: Dict[str, Any]) -> None:
 
         # Visualization section
         st.subheader("Visualizations")
-        
+
         # Try to detect suitable chart type
         chart_type = detect_chart_type(df)
 
@@ -636,7 +668,7 @@ for i, query in enumerate(example_queries):
         st.session_state.current_query = query
         # Automatically rerun to update the text area
         st.rerun()
-        
+
 # Store current query in session state if not exists
 if "current_query" not in st.session_state:
     st.session_state.current_query = "Show me the average salary by department"

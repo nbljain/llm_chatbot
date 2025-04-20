@@ -168,9 +168,9 @@ def update_conversation_context(
         {
             "question": question,
             "sql": sql_query,
-            "results": query_results[:5]
-            if query_results
-            else [],  # Store only first 5 results to save memory
+            "results": (
+                query_results[:5] if query_results else []
+            ),  # Store only first 5 results to save memory
             "explanation": explanation,
         }
     )

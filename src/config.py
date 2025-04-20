@@ -2,6 +2,7 @@
 Configuration module for the SQL Chatbot application.
 Centralizes all configuration settings and uses environment variables with sensible defaults.
 """
+
 import os
 from pathlib import Path
 
