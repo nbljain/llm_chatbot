@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-chatbot
+  labels:
+    app: sql-chatbot
+    environment: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sql-chatbot
+  template:
+    metadata:
+      labels:
+        app: sql-chatbot
+        environment: staging
+    spec:
+      containers:
+      - name: sql-chatbot
+        image: ${ACR_REGISTRY}/${DOCKER_IMAGE}:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+          name: frontend
+        - containerPort: 8000
+          name: backend
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: sql-chatbot-secrets
+              key: openai-api-key
+        - name: DB_TYPE
+          value: "sqlite"
+        - name: DB_NAME
+          value: "/app/data/sql_chatbot.db"
+        - name: API_HOST
+          value: "0.0.0.0"
+        - name: API_PORT
+          value: "8000"
+        - name: API_URL
+          value: "http://localhost:8000"
+        - name: FRONTEND_HOST
+          value: "0.0.0.0"
+        - name: FRONTEND_PORT
+          value: "5000"
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: sql-chatbot-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sql-chatbot-pvc
+  labels:
+    app: sql-chatbot
+    environment: staging
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sql-chatbot-secrets
+  labels:
+    app: sql-chatbot
+    environment: staging
+type: Opaque
+data:
+  openai-api-key: ${OPENAI_API_KEY_BASE64}
