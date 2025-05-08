@@ -430,6 +430,183 @@ async def process_query(request: QueryRequest, req: Request):
             details=str(e),
         )
 
+@app.post("/query_stream")
+async def process_query_stream(request: QueryRequest, req: Request):
+    """Process natural language query with streaming response"""
+    request_id = getattr(req.state, "request_id", "unknown")
+    
+    # Validate request
+    if not request.question or request.question.strip() == "":
+        logger.warning(
+            f"Empty question submitted",
+            extra={"request_id": request_id}
+        )
+        raise ValidationError(
+            message="Question cannot be empty",
+            error_code="EMPTY_QUESTION"
+        )
+
+    # Use a generic user ID for conversation memory
+    user_id = "default_user"
+    
+    # Log the query request
+    logger.info(
+        f"Processing streaming query: {request.question[:50]}...",
+        extra={
+            "request_id": request_id,
+            "question_length": len(request.question)
+        }
+    )
+    
+    async def stream_response():
+        try:
+            # Initial stage - Starting
+            yield json.dumps({
+                "stage": "starting",
+                "message": "Starting to process your query..."
+            }) + "\n"
+            
+            await asyncio.sleep(0.2)  # Small delay for more natural streaming
+            
+            # Generate SQL from natural language
+            yield json.dumps({
+                "stage": "generating_sql",
+                "message": "Translating your question to SQL..."
+            }) + "\n"
+            
+            # Actual SQL generation
+            sql_result = generate_sql_query(request.question, user_id)
+            
+            if not sql_result["success"]:
+                yield json.dumps({
+                    "stage": "error",
+                    "message": "Failed to generate SQL",
+                    "error": sql_result["error"],
+                    "success": False
+                }) + "\n"
+                return
+                
+            # SQL Generated
+            yield json.dumps({
+                "stage": "sql_generated",
+                "message": "SQL query generated successfully",
+                "sql": sql_result["sql"]
+            }) + "\n"
+            
+            await asyncio.sleep(0.2)  # Small delay
+            
+            # Executing SQL
+            yield json.dumps({
+                "stage": "executing_sql",
+                "message": "Executing SQL query..."
+            }) + "\n"
+            
+            # Execute the generated SQL
+            query_result = execute_sql_query(sql_result["sql"])
+            
+            if not query_result["success"]:
+                yield json.dumps({
+                    "stage": "error",
+                    "message": "Failed to execute SQL query",
+                    "error": query_result["error"],
+                    "sql": sql_result["sql"],
+                    "success": False
+                }) + "\n"
+                return
+                
+            # Query execution successful
+            yield json.dumps({
+                "stage": "query_executed",
+                "message": "Query executed successfully",
+                "data": query_result["data"],
+                "sql": sql_result["sql"]
+            }) + "\n"
+            
+            await asyncio.sleep(0.2)  # Small delay
+            
+            # Generating explanation
+            yield json.dumps({
+                "stage": "generating_explanation",
+                "message": "Generating explanation of results..."
+            }) + "\n"
+            
+            # Generate a natural language explanation
+            explanation_result = generate_answer(
+                question=request.question,
+                sql_query=sql_result["sql"],
+                query_results=query_result["data"],
+                user_id=user_id,
+            )
+            
+            # If explanation is available, stream it in chunks for a more engaging experience
+            if explanation_result["success"]:
+                explanation = explanation_result["explanation"]
+                
+                # Split explanation into sentences to create natural pauses
+                import re
+                sentences = re.split(r'(?<=[.!?])\s+', explanation)
+                
+                # Stream each sentence with a short delay for a more natural typing effect
+                accumulated_explanation = ""
+                
+                for i, sentence in enumerate(sentences):
+                    accumulated_explanation += sentence + " "
+                    
+                    # Send the explanation chunk
+                    yield json.dumps({
+                        "stage": "explanation_chunk",
+                        "message": "Generating explanation...",
+                        "chunk": sentence,
+                        "chunk_number": i + 1,
+                        "total_chunks": len(sentences),
+                        "accumulated_explanation": accumulated_explanation.strip(),
+                    }) + "\n"
+                    
+                    # Add a small delay between chunks to simulate typing
+                    await asyncio.sleep(0.3)
+                
+                # Update conversation context with this interaction
+                update_conversation_context(
+                    user_id=user_id,
+                    question=request.question,
+                    sql_query=sql_result["sql"],
+                    query_results=query_result["data"],
+                    explanation=explanation,
+                )
+            
+            # Final response with everything
+            final_response = {
+                "stage": "complete",
+                "message": "Processing complete",
+                "success": True,
+                "sql": sql_result["sql"],
+                "data": query_result["data"]
+            }
+            
+            # Add explanation to the final response
+            if explanation_result["success"]:
+                final_response["explanation"] = explanation_result["explanation"]
+            
+            yield json.dumps(final_response) + "\n"
+            
+        except Exception as e:
+            # Handle any exceptions
+            logger.exception(
+                f"Error in streaming query: {str(e)}",
+                extra={"request_id": request_id}
+            )
+            yield json.dumps({
+                "stage": "error",
+                "message": "An error occurred during processing",
+                "error": str(e),
+                "success": False
+            }) + "\n"
+    
+    return StreamingResponse(
+        stream_response(),
+        media_type="application/x-ndjson"
+    )
+
 
 # Run the API with Uvicorn when the script is executed directly
 if __name__ == "__main__":
