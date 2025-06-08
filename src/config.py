@@ -2,7 +2,6 @@
 Configuration module for the SQL Chatbot application.
 Centralizes all configuration settings and uses environment variables with sensible defaults.
 """
-
 import os
 from pathlib import Path
 
@@ -17,13 +16,20 @@ DB_PORT = os.environ.get("DB_PORT", "5432")  # Default PostgreSQL port
 DB_USER = os.environ.get("DB_USER", "")
 DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
 
+# Databricks configuration
+DATABRICKS_SERVER_HOSTNAME = os.environ.get("DATABRICKS_SERVER_HOSTNAME", "")
+DATABRICKS_HTTP_PATH = os.environ.get("DATABRICKS_HTTP_PATH", "")
+DATABRICKS_TOKEN = os.environ.get("DATABRICKS_TOKEN", "")
+DATABRICKS_CATALOG = os.environ.get("DATABRICKS_CATALOG", "main")
+DATABRICKS_SCHEMA = os.environ.get("DATABRICKS_SCHEMA", "default")
+
 # Construct database URL based on type
 if DB_TYPE == "sqlite":
     DATABASE_URL = f"sqlite:///{DB_NAME}"
 elif DB_TYPE == "postgresql":
-    DATABASE_URL = (
-        f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
+    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+elif DB_TYPE == "databricks":
+    DATABASE_URL = f"databricks://token:{DATABRICKS_TOKEN}@{DATABRICKS_SERVER_HOSTNAME}?http_path={DATABRICKS_HTTP_PATH}&catalog={DATABRICKS_CATALOG}&schema={DATABRICKS_SCHEMA}"
 else:
     raise ValueError(f"Unsupported database type: {DB_TYPE}")
 
@@ -45,9 +51,7 @@ ENDPOINT_SCHEMA = "/schema"
 ENDPOINT_QUERY = "/query"
 
 # Authentication settings
-AUTH_TOKEN_EXPIRY_MINUTES = int(
-    os.environ.get("AUTH_TOKEN_EXPIRY_MINUTES", "60")
-)
+AUTH_TOKEN_EXPIRY_MINUTES = int(os.environ.get("AUTH_TOKEN_EXPIRY_MINUTES", "60"))
 
 # NLP settings
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
