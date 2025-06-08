@@ -33,7 +33,7 @@ jobs:
           poetry install
       
       - name: Run Black for Code Formatting
-        run: black --check . --line-length 79
+        run: poetry run black --check . --line-length 79
 
       - name: Run flake8
         run: poetry run flake8 src tests
