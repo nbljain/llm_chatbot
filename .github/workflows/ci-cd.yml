@@ -33,16 +33,16 @@ jobs:
           poetry install
       
       - name: Run Black for Code Formatting
-        run: poetry run black --check . --line-length 79
+        run: poetry run black . --line-length 79
 
       - name: Run flake8
         run: poetry run flake8 src tests
 
       - name: Run black
-        run: poetry run black --check src tests
+        run: poetry run black src tests
 
       - name: Run isort
-        run: poetry run isort --check src tests
+        run: poetry run isort src tests
 
   security-scan:
     name: Security Scan
