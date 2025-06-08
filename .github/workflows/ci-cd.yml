@@ -36,13 +36,10 @@ jobs:
         run: poetry run black . --line-length 79
 
       - name: Run flake8
-        run: poetry run flake8 src tests
-
-      - name: Run black
-        run: poetry run black src tests
+        run: poetry run flake8 .
 
       - name: Run isort
-        run: poetry run isort src tests
+        run: poetry run isort .
 
   security-scan:
     name: Security Scan
