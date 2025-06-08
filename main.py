@@ -5,6 +5,11 @@ import subprocess
 import sys
 import threading
 import time
+import dotenv
+
+
+# Load environment variables from .env file
+dotenv.load_dotenv()
 
 # Configure logging
 logging.basicConfig(

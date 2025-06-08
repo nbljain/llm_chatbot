@@ -25,38 +25,38 @@ user_conversation_context = {}
 def get_llm():
     """Initialize and return the language model"""
     api_key = os.environ.get("OPENAI_API_KEY")
-    
+
     if not api_key:
         raise ValueError("OPENAI_API_KEY environment variable not set")
-    
+
     return ChatOpenAI(temperature=0, model=MODEL_NAME, api_key=api_key)
 
 
 def get_table_schema_string():
     """Get database schema as a formatted string for the LLM prompt"""
     from src.database.relationships import get_relationships_for_llm
-    
+
     schema_dict = get_all_table_schemas()
-    
+
     if not schema_dict:
         return "No tables found in the database."
-    
+
     schema_str = "Database Schema:\n"
-    
+
     for table_name, columns in schema_dict.items():
         schema_str += f"Table: {table_name}\n"
         schema_str += "Columns:\n"
-        
+
         for col_name, col_type in columns.items():
             schema_str += f"  - {col_name} ({col_type})\n"
-        
+
         schema_str += "\n"
-    
+
     # Add table relationships information
     relationships_str = get_relationships_for_llm()
     if relationships_str and relationships_str != "No table relationships defined.":
         schema_str += relationships_str
-    
+
     return schema_str
 
 
@@ -64,40 +64,44 @@ def get_conversation_context_string(user_id: Optional[str]) -> str:
     """Get conversation context as a formatted string"""
     if not user_id or user_id not in user_conversation_context:
         return ""
-    
+
     context = user_conversation_context[user_id]
     if not context:
         return ""
-    
+
     context_str = "\nPrevious conversation history:\n"
-    for i, interaction in enumerate(context[-3:]):  # Only include the last 3 interactions
-        context_str += f"Question {i+1}: {interaction['question']}\n"
+    for i, interaction in enumerate(
+        context[-3:]
+    ):  # Only include the last 3 interactions
+        context_str += f"Question {i + 1}: {interaction['question']}\n"
         context_str += f"SQL: {interaction['sql']}\n"
         if interaction.get("results"):
             # Truncate long results
-            results_str = json.dumps(interaction['results'], indent=2)
+            results_str = json.dumps(interaction["results"], indent=2)
             if len(results_str) > 200:
                 results_str = results_str[:200] + "..."
             context_str += f"Results: {results_str}\n"
-    
+
     return context_str
 
 
-def update_conversation_context(user_id, question, sql_query, query_results, explanation):
+def update_conversation_context(
+    user_id, question, sql_query, query_results, explanation
+):
     """Update the conversation context for a user"""
     if user_id not in user_conversation_context:
         user_conversation_context[user_id] = []
-    
+
     # Add the new interaction
     interaction = {
         "question": question,
         "sql": sql_query,
         "results": query_results,
-        "explanation": explanation
+        "explanation": explanation,
     }
-    
+
     user_conversation_context[user_id].append(interaction)
-    
+
     # Keep only the last 10 interactions to prevent memory from growing too large
     if len(user_conversation_context[user_id]) > 10:
         user_conversation_context[user_id] = user_conversation_context[user_id][-10:]
@@ -105,24 +109,24 @@ def update_conversation_context(user_id, question, sql_query, query_results, exp
 
 def generate_sql_query(user_question: str, user_id: Optional[str] = None) -> str:
     """Generate SQL from natural language question
-    
+
     Args:
         user_question: The natural language question to translate to SQL
         user_id: Optional user identifier for maintaining conversation history
-    
+
     Returns:
         Generated SQL query string or error message
     """
     logger.info(f"Processing question: {user_question}")
-    
+
     llm = get_llm()
-    
+
     # Get the database schema
     schema_str = get_table_schema_string()
-    
+
     # Get conversation context
     context_str = get_conversation_context_string(user_id)
-    
+
     system_prompt = f"""You are an expert SQL assistant that translates natural language questions into SQL queries.
 
 {schema_str}
@@ -145,38 +149,53 @@ Your task is to generate a valid SQLite SQL query based on the user's question.
 
     messages = [
         SystemMessage(content=system_prompt),
-        HumanMessage(content=user_question)
+        HumanMessage(content=user_question),
     ]
-    
+
     try:
         response = llm(messages)
         generated_sql = response.content.strip()
-        
+
+        # Extract SQL from markdown code blocks if present
+        if generated_sql.startswith("```sql"):
+            # Remove ```sql and ``` markers
+            generated_sql = (
+                generated_sql.replace("```sql", "").replace("```", "").strip()
+            )
+        elif generated_sql.startswith("```"):
+            # Remove ``` markers
+            generated_sql = generated_sql.replace("```", "").strip()
+
         logger.info(f"Generated SQL: {generated_sql}")
         return generated_sql
-        
+
     except Exception as e:
         error_msg = f"Error generating SQL: {str(e)}"
         logger.error(error_msg)
         return error_msg
 
 
-def generate_answer(question: str, sql_query: str, query_results: List[Dict], user_id: Optional[str] = None) -> str:
+def generate_answer(
+    question: str,
+    sql_query: str,
+    query_results: List[Dict],
+    user_id: Optional[str] = None,
+) -> str:
     """Generate a natural language explanation of the SQL query results
-    
+
     Args:
         question: The natural language question
         sql_query: The generated SQL query
         query_results: The results of the SQL query
         user_id: Optional user identifier for maintaining conversation history
-    
+
     Returns:
         Natural language explanation of the results
     """
     logger.info("Generating answer explanation...")
-    
+
     llm = get_llm()
-    
+
     system_prompt = """You are an expert SQL assistant that explains SQL queries and their results in simple, clear language.
 
 Your task is to provide a helpful explanation of:
@@ -206,20 +225,22 @@ Please provide a clear explanation of what this query does and what insights can
 
     messages = [
         SystemMessage(content=system_prompt),
-        HumanMessage(content=explanation_prompt)
+        HumanMessage(content=explanation_prompt),
     ]
-    
+
     try:
         response = llm(messages)
         explanation = response.content.strip()
-        
+
         # Update conversation context
         if user_id:
-            update_conversation_context(user_id, question, sql_query, query_results, explanation)
-        
+            update_conversation_context(
+                user_id, question, sql_query, query_results, explanation
+            )
+
         logger.info("Generated explanation successfully")
         return explanation
-        
+
     except Exception as e:
         error_msg = f"Error generating explanation: {str(e)}"
         logger.error(error_msg)

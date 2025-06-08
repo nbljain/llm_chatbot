@@ -17,9 +17,7 @@ def initialize_database():
     """Initialize the database with sample data if it doesn't exist or is empty"""
     # Only proceed with SQLite initialization
     if DB_TYPE != "sqlite":
-        logger.info(
-            f"Database type is {DB_TYPE}, skipping SQLite initialization"
-        )
+        logger.info(f"Database type is {DB_TYPE}, skipping SQLite initialization")
         return
 
     # Check if database exists and has data
