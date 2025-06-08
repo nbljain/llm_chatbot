@@ -1,124 +1,251 @@
 """
-Unit tests for NLP functionality.
-Tests SQL generation and response generation with mocked OpenAI responses.
+Unit tests for NLP processing module.
 """
-
-import os
-import sys
-from unittest.mock import MagicMock, patch
-
 import pytest
-
-# Add the project root directory to the path so we can import our modules
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-)
-
+from unittest.mock import Mock, patch, MagicMock
 from src.backend.nlp import (
-    generate_answer,
-    generate_sql_query,
+    get_llm,
     get_table_schema_string,
+    get_conversation_context_string,
+    update_conversation_context,
+    generate_sql_query,
+    generate_answer,
+    user_conversation_context
 )
 
 
-def test_get_table_schema_string(monkeypatch):
-    """Test getting the database schema as a string."""
+class TestNLPFunctions:
+    """Test cases for NLP processing functions."""
 
-    # Mock the get_all_table_schemas function
-    def mock_get_all_table_schemas():
-        return {
-            "employees": {
-                "employee_id": "INTEGER",
-                "first_name": "TEXT",
-                "last_name": "TEXT",
-            },
-            "projects": {
-                "project_id": "INTEGER",
-                "project_name": "TEXT",
-                "description": "TEXT",
-            },
+    def setup_method(self):
+        """Set up test fixtures before each test method."""
+        # Clear conversation context before each test
+        user_conversation_context.clear()
+
+    @patch('src.backend.nlp.os.environ.get')
+    def test_get_llm_with_api_key(self, mock_env_get):
+        """Test LLM initialization with valid API key."""
+        mock_env_get.return_value = "test_api_key"
+        
+        with patch('src.backend.nlp.ChatOpenAI') as mock_chat_openai:
+            mock_llm = Mock()
+            mock_chat_openai.return_value = mock_llm
+            
+            result = get_llm()
+            
+            mock_chat_openai.assert_called_once_with(
+                temperature=0, 
+                model="gpt-4o", 
+                api_key="test_api_key"
+            )
+            assert result == mock_llm
+
+    @patch('src.backend.nlp.os.environ.get')
+    def test_get_llm_without_api_key(self, mock_env_get):
+        """Test LLM initialization without API key raises error."""
+        mock_env_get.return_value = None
+        
+        with pytest.raises(ValueError, match="OPENAI_API_KEY environment variable not set"):
+            get_llm()
+
+    @patch('src.backend.nlp.get_all_table_schemas')
+    @patch('src.database.relationships.get_relationships_for_llm')
+    def test_get_table_schema_string_with_tables(self, mock_get_relationships, mock_get_schemas):
+        """Test schema string generation with tables."""
+        mock_get_schemas.return_value = {
+            'users': {'id': 'INTEGER', 'name': 'TEXT'},
+            'orders': {'id': 'INTEGER', 'user_id': 'INTEGER', 'amount': 'REAL'}
         }
+        mock_get_relationships.return_value = "Table relationships:\nusers.id = orders.user_id"
+        
+        result = get_table_schema_string()
+        
+        assert "Database Schema:" in result
+        assert "Table: users" in result
+        assert "Table: orders" in result
+        assert "id (INTEGER)" in result
+        assert "name (TEXT)" in result
+        assert "Table relationships:" in result
 
-    monkeypatch.setattr(
-        "src.backend.nlp.get_all_table_schemas", mock_get_all_table_schemas
-    )
+    @patch('src.backend.nlp.get_all_table_schemas')
+    def test_get_table_schema_string_no_tables(self, mock_get_schemas):
+        """Test schema string generation with no tables."""
+        mock_get_schemas.return_value = {}
+        
+        result = get_table_schema_string()
+        
+        assert result == "No tables found in the database."
 
-    # Get the schema string
-    schema_str = get_table_schema_string()
+    def test_get_conversation_context_string_no_user(self):
+        """Test conversation context retrieval with no user ID."""
+        result = get_conversation_context_string(None)
+        assert result == ""
 
-    # Verify it contains the expected tables and columns
-    assert "employees" in schema_str
-    assert "projects" in schema_str
-    assert "employee_id" in schema_str
-    assert "project_name" in schema_str
+    def test_get_conversation_context_string_new_user(self):
+        """Test conversation context retrieval for new user."""
+        result = get_conversation_context_string("new_user")
+        assert result == ""
 
+    def test_get_conversation_context_string_with_history(self):
+        """Test conversation context retrieval with existing history."""
+        user_id = "test_user"
+        user_conversation_context[user_id] = [
+            {
+                "question": "Show me users",
+                "sql": "SELECT * FROM users",
+                "results": [{"id": 1, "name": "John"}],
+                "explanation": "This query shows all users"
+            }
+        ]
+        
+        result = get_conversation_context_string(user_id)
+        
+        assert "Previous conversation history:" in result
+        assert "Question 1: Show me users" in result
+        assert "SQL: SELECT * FROM users" in result
+        assert "Results:" in result
 
-@patch("src.backend.nlp.get_llm")
-def test_generate_sql_query(mock_get_llm, monkeypatch):
-    """Test generating SQL from a natural language question."""
-    # Mock the LLM chain
-    mock_chain = MagicMock()
-    mock_chain.invoke.return_value = (
-        "SELECT * FROM employees WHERE department = 'Engineering'"
-    )
-    mock_get_llm.return_value = mock_chain
+    def test_update_conversation_context_new_user(self):
+        """Test updating conversation context for new user."""
+        user_id = "new_user"
+        question = "Show me users"
+        sql_query = "SELECT * FROM users"
+        query_results = [{"id": 1, "name": "John"}]
+        explanation = "This shows all users"
+        
+        update_conversation_context(user_id, question, sql_query, query_results, explanation)
+        
+        assert user_id in user_conversation_context
+        assert len(user_conversation_context[user_id]) == 1
+        
+        interaction = user_conversation_context[user_id][0]
+        assert interaction["question"] == question
+        assert interaction["sql"] == sql_query
+        assert interaction["results"] == query_results
+        assert interaction["explanation"] == explanation
 
-    # Mock the schema string function
-    monkeypatch.setattr(
-        "src.backend.nlp.get_table_schema_string", lambda: "Table schema here"
-    )
+    def test_update_conversation_context_limit(self):
+        """Test conversation context limit enforcement."""
+        user_id = "test_user"
+        
+        # Add 12 interactions (more than the 10 limit)
+        for i in range(12):
+            update_conversation_context(
+                user_id, 
+                f"Question {i}", 
+                f"SQL {i}", 
+                [{"result": i}], 
+                f"Explanation {i}"
+            )
+        
+        # Should only keep the last 10
+        assert len(user_conversation_context[user_id]) == 10
+        assert user_conversation_context[user_id][0]["question"] == "Question 2"
+        assert user_conversation_context[user_id][-1]["question"] == "Question 11"
 
-    # Generate SQL
-    sql = generate_sql_query("Show me engineers")
+    @patch('src.backend.nlp.get_llm')
+    @patch('src.backend.nlp.get_table_schema_string')
+    @patch('src.backend.nlp.get_conversation_context_string')
+    def test_generate_sql_query_success(self, mock_get_context, mock_get_schema, mock_get_llm):
+        """Test successful SQL query generation."""
+        # Mock dependencies
+        mock_llm = Mock()
+        mock_response = Mock()
+        mock_response.content = "SELECT * FROM users WHERE name = 'John'"
+        mock_llm.return_value = mock_response
+        mock_get_llm.return_value = mock_llm
+        mock_get_schema.return_value = "Schema info"
+        mock_get_context.return_value = "Context info"
+        
+        result = generate_sql_query("Show me user John", "test_user")
+        
+        assert result == "SELECT * FROM users WHERE name = 'John'"
+        mock_get_llm.assert_called_once()
+        mock_get_schema.assert_called_once()
+        mock_get_context.assert_called_once_with("test_user")
 
-    # Verify the generated SQL
-    assert sql == "SELECT * FROM employees WHERE department = 'Engineering'"
+    @patch('src.backend.nlp.get_llm')
+    @patch('src.backend.nlp.get_table_schema_string')
+    @patch('src.backend.nlp.get_conversation_context_string')
+    def test_generate_sql_query_with_markdown(self, mock_get_context, mock_get_schema, mock_get_llm):
+        """Test SQL query generation with markdown formatting."""
+        # Mock dependencies
+        mock_llm = Mock()
+        mock_response = Mock()
+        mock_response.content = "```sql\nSELECT * FROM users\n```"
+        mock_llm.return_value = mock_response
+        mock_get_llm.return_value = mock_llm
+        mock_get_schema.return_value = "Schema info"
+        mock_get_context.return_value = "Context info"
+        
+        result = generate_sql_query("Show me users", "test_user")
+        
+        assert result == "SELECT * FROM users"
 
-    # Verify the chain was called with the right arguments
-    mock_chain.invoke.assert_called_once()
-    args = mock_chain.invoke.call_args[0][0]
-    assert "Show me engineers" in str(args)
+    @patch('src.backend.nlp.get_llm')
+    @patch('src.backend.nlp.get_table_schema_string')
+    @patch('src.backend.nlp.get_conversation_context_string')
+    def test_generate_sql_query_exception(self, mock_get_context, mock_get_schema, mock_get_llm):
+        """Test SQL query generation with exception."""
+        # Mock dependencies to raise exception
+        mock_get_llm.side_effect = Exception("API Error")
+        mock_get_schema.return_value = "Schema info"
+        mock_get_context.return_value = "Context info"
+        
+        result = generate_sql_query("Show me users", "test_user")
+        
+        assert "Error generating SQL: API Error" in result
 
+    @patch('src.backend.nlp.get_llm')
+    @patch('src.backend.nlp.update_conversation_context')
+    def test_generate_answer_success(self, mock_update_context, mock_get_llm):
+        """Test successful answer generation."""
+        # Mock dependencies
+        mock_llm = Mock()
+        mock_response = Mock()
+        mock_response.content = "This query shows all users in the database."
+        mock_llm.return_value = mock_response
+        mock_get_llm.return_value = mock_llm
+        
+        question = "Show me users"
+        sql_query = "SELECT * FROM users"
+        query_results = [{"id": 1, "name": "John"}]
+        user_id = "test_user"
+        
+        result = generate_answer(question, sql_query, query_results, user_id)
+        
+        assert result == "This query shows all users in the database."
+        mock_update_context.assert_called_once_with(
+            user_id, question, sql_query, query_results, result
+        )
 
-@patch("src.backend.nlp.get_llm")
-def test_generate_answer(mock_get_llm):
-    """Test generating a natural language explanation of SQL results."""
-    # Mock the LLM
-    mock_llm = MagicMock()
-    mock_llm.invoke.return_value = "There are 3 engineers in the database."
-    mock_get_llm.return_value = mock_llm
+    @patch('src.backend.nlp.get_llm')
+    def test_generate_answer_exception(self, mock_get_llm):
+        """Test answer generation with exception."""
+        # Mock dependencies to raise exception
+        mock_get_llm.side_effect = Exception("API Error")
+        
+        result = generate_answer("Show me users", "SELECT * FROM users", [], "test_user")
+        
+        assert "Error generating explanation: API Error" in result
 
-    # Sample data
-    question = "How many engineers do we have?"
-    sql_query = "SELECT * FROM employees WHERE department = 'Engineering'"
-    query_results = [
-        {
-            "first_name": "John",
-            "last_name": "Smith",
-            "department": "Engineering",
-        },
-        {
-            "first_name": "Michael",
-            "last_name": "Williams",
-            "department": "Engineering",
-        },
-        {
-            "first_name": "Robert",
-            "last_name": "Miller",
-            "department": "Engineering",
-        },
-    ]
-
-    # Generate answer
-    answer = generate_answer(question, sql_query, query_results)
-
-    # Verify the answer
-    assert answer == "There are 3 engineers in the database."
-
-    # Verify the LLM was called with the right arguments
-    mock_llm.invoke.assert_called_once()
-    args = mock_llm.invoke.call_args[0][0]
-    assert "How many engineers do we have?" in str(args)
-    assert "SELECT * FROM employees WHERE department = 'Engineering'" in str(
-        args
-    )
+    @patch('src.backend.nlp.get_llm')
+    def test_generate_answer_large_results(self, mock_get_llm):
+        """Test answer generation with large result set."""
+        # Mock dependencies
+        mock_llm = Mock()
+        mock_response = Mock()
+        mock_response.content = "Results are truncated due to size."
+        mock_llm.return_value = mock_response
+        mock_get_llm.return_value = mock_llm
+        
+        # Create large result set
+        large_results = [{"id": i, "data": "x" * 100} for i in range(100)]
+        
+        result = generate_answer("Show data", "SELECT * FROM large_table", large_results)
+        
+        assert result == "Results are truncated due to size."
+        # Verify that the LLM was called with truncated data
+        call_args = mock_llm.call_args[0][0]
+        prompt_content = call_args[1].content
+        assert "(truncated)" in prompt_content
