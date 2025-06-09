@@ -6,6 +6,7 @@ from src.database.db import (
     get_table_schema,
     get_all_table_schemas,
     execute_sql_query,
+    get_table_names
 )
 
 
