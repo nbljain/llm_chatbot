@@ -58,7 +58,10 @@ jobs:
           poetry install
 
       - name: Run unit tests
-        run: poetry run pytest tests/unit -v --cov=src --cov-report=xml
+        run: poetry run coverage run -m pytest tests/unit -v --cov=src --cov-report=xml
+             poetry run coverage report
+             poetry run coverage xml
+             
 
       - name: Upload code coverage
         uses: codecov/codecov-action@v3
