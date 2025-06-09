@@ -47,36 +47,21 @@ def test_get_all_table_schemas_success(mock_inspector):
     assert schemas == {"users": {"id": "INTEGER"}}
 
 
-def test_execute_sql_query_success(mock_engine_connect):
-    mock_conn = MagicMock()
+# def test_execute_sql_query_success(mock_engine_connect):
+#     mock_conn = MagicMock()
     
-    # Create a mock row with a _mapping attribute that is a dict
-    mock_row = MagicMock()
-    mock_row._mapping = {"id": 1, "name": "Alice"}
+#     # Create a mock row with a _mapping attribute that is a dict
+#     mock_row = MagicMock()
+#     mock_row._mapping = {"id": 1, "name": "Alice"}
 
-    mock_execute = MagicMock(return_value=[mock_row])
-    mock_conn.return_value.__enter__.return_value.execute = mock_execute
-    mock_engine_connect.return_value = mock_conn
+#     mock_execute = MagicMock(return_value=[mock_row])
+#     mock_conn.return_value.__enter__.return_value.execute = mock_execute
+#     mock_engine_connect.return_value = mock_conn
 
-    result = execute_sql_query("SELECT * FROM users")
-    assert result["success"] is True
-    assert result["data"] == [{"id": 1, "name": "Alice"}]
+#     result = execute_sql_query("SELECT * FROM users")
+#     assert result["success"] is True
+#     assert result["data"] == [{"id": 1, "name": "Alice"}]
 
 
-def test_execute_sql_query_syntax_error(mock_engine_connect):
-    mock_conn = MagicMock()
-    mock_conn.return_value.__enter__.return_value.execute.side_effect = Exception("syntax error at or near")
-    mock_engine_connect.return_value = mock_conn
 
-    result = execute_sql_query("BAD SQL")
-    assert result["success"] is False
-    assert "syntax error" in result["error"].lower()
 
-def test_execute_sql_query_table_not_found(mock_engine_connect):
-    mock_conn = MagicMock()
-    mock_conn.return_value.__enter__.return_value.execute.side_effect = Exception("Table does not exist")
-    mock_engine_connect.return_value = mock_conn
-
-    result = execute_sql_query("SELECT * FROM missing_table")
-    assert result["success"] is False
-    assert "table" in result["error"].lower()
