@@ -8,7 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_IMAGE: sql-chatbot
+  DOCKER_IMAGE: employee_llm_rag_chatbot
+  IMAGE_TAG: latest
   PYTHON_VERSION: '3.11.5'
   NODE_VERSION: '18'
 
