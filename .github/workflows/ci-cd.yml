@@ -141,6 +141,12 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Debug SSH Configuration
+        run: |
+          echo "Checking SSH configuration..."
+          ls -la ~/.ssh
+          ssh -v ${{ secrets.EC2_HOST }} exit
+
       - name: Deploy on EC2
         run: |
           ssh ${{ secrets.EC2_HOST }} << 'EOF'
