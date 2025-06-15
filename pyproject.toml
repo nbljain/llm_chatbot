@@ -1,9 +1,8 @@
 [tool.poetry]
-name = "sql-chatbot"
-version = "0.1.0"
+name = "employees-sql-chatbot"
+version = "0.0.1"
 description = "An intelligent SQL query translation and data exploration platform"
-authors = ["Your Name <your.email@example.com>"]
-readme = "README.md"
+authors = ["Nitin Jain <nitinbljain@outlook.com>"]
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
@@ -13,7 +12,6 @@ uvicorn = "^0.21.1"
 streamlit = "^1.21.0"
 sqlalchemy = "^1.4.48"
 pandas = "^2.0.0"
-plotly = "^5.14.0"
 langchain = "0.0.267"
 openai = "^0.27.4"
 pydantic = "1.10.7"
@@ -34,9 +32,6 @@ bandit = "^1.7.5"
 safety = "^2.3.5"
 locust = "^2.15.1"
 httpx = "^0.24.0"  # For TestClient in FastAPI tests
-
-[tool.poetry.scripts]
-start = "src.main:main"
 
 [build-system]
 requires = ["poetry-core"]
