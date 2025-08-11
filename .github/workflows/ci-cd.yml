@@ -131,32 +131,34 @@ jobs:
     needs: [build-docker]
     environment: staging
     permissions: 
-      id-token: write #This is required for requesting the OIDC JWT Token
-      contents: read #Required when GH token is used to authenticate with private repo
+      id-token: write
+      contents: read 
 
+    env:
+      CONTAINER_APP_NAME: aca-llm-chatbot
+      RESOURCE_GROUP: azure-ml-rsg
+      ACR_NAME: azurecrnew
+  
     steps:
       - name: Checkout to the branch
         uses: actions/checkout@v2
-
+  
       - name: Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.ACALLMCHATBOT_AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.ACALLMCHATBOT_AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.ACALLMCHATBOT_AZURE_SUBSCRIPTION_ID }}
-
+  
+      - name: Azure ACR Login
+        run: az acr login --name ${{ env.ACR_NAME }}
+  
       - name: Build and push container image to registry
         uses: azure/container-apps-deploy-action@v2
         with:
           appSourcePath: ${{ github.workspace }}
-          _dockerfilePathKey_: _dockerfilePath_
-          _targetLabelKey_: _targetLabel_
-          registryUrl: https://aca-llm-chatbot.redtree-bcb34fcc.westus2.azurecontainerapps.io
-          registryUsername: ${{ secrets.ACALLMCHATBOT_REGISTRY_USERNAME }}
-          registryPassword: ${{ secrets.ACALLMCHATBOT_REGISTRY_PASSWORD }}
-          containerAppName: aca-llm-chatbot
-          resourceGroup: azure-ml-rsg
-          imageToBuild: default/[parameters('containerAppName')]:${{ github.sha }}
-          _buildArgumentsKey_: |
-            _buildArgumentsValues_
-
+          dockerfilePath: ./Dockerfile          # adjust path if Dockerfile is elsewhere
+          registryUrl: ${{ env.ACR_NAME }}.azurecr.io
+          containerAppName: ${{ env.CONTAINER_APP_NAME }}
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          imageToBuild: ${{ env.ACR_NAME }}.azurecr.io/${{ env.CONTAINER_APP_NAME }}:${{ github.sha }}
