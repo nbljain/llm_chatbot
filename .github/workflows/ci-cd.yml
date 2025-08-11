@@ -126,7 +126,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-staging:
-    name: Deploy to Staging (EC2)
+    name: Build to ACR and deploy to ACA
     runs-on: ubuntu-latest
     needs: [build-docker]
     environment: staging
@@ -157,8 +157,10 @@ jobs:
         uses: azure/container-apps-deploy-action@v2
         with:
           appSourcePath: ${{ github.workspace }}
-          dockerfilePath: ./Dockerfile          # adjust path if Dockerfile is elsewhere
+          dockerfilePath: ./Dockerfile         
           registryUrl: ${{ env.ACR_NAME }}.azurecr.io
+          registryUsername: ${{ secrets.ACR_USERNAME }}
+          registryPassword: ${{ secrets.ACR_PASSWORD }}
           containerAppName: ${{ env.CONTAINER_APP_NAME }}
           resourceGroup: ${{ env.RESOURCE_GROUP }}
           imageToBuild: ${{ env.ACR_NAME }}.azurecr.io/${{ env.CONTAINER_APP_NAME }}:${{ github.sha }}
