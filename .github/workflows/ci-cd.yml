@@ -164,4 +164,5 @@ jobs:
           containerAppName: ${{ env.CONTAINER_APP_NAME }}
           resourceGroup: ${{ env.RESOURCE_GROUP }}
           imageToBuild: ${{ env.ACR_NAME }}.azurecr.io/${{ env.CONTAINER_APP_NAME }}:${{ github.sha }}
-          
+          environmentVariables: |
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
