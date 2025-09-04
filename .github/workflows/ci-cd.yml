@@ -1,4 +1,4 @@
-name: SQL Chatbot CI/CD Pipeline
+name: Employee Chatbot CI/CD Pipeline
 
 on:
   push:
@@ -138,6 +138,8 @@ jobs:
       CONTAINER_APP_NAME: aca-llm-chatbot
       RESOURCE_GROUP: azure-ml-rsg
       ACR_NAME: acrmlneu
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      
   
     steps:
       - name: Checkout to the branch
@@ -162,3 +164,4 @@ jobs:
           containerAppName: ${{ env.CONTAINER_APP_NAME }}
           resourceGroup: ${{ env.RESOURCE_GROUP }}
           imageToBuild: ${{ env.ACR_NAME }}.azurecr.io/${{ env.CONTAINER_APP_NAME }}:${{ github.sha }}
+          
