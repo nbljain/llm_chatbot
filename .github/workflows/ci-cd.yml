@@ -139,8 +139,9 @@ jobs:
       RESOURCE_GROUP: azure-ml-rsg
       ACR_NAME: acrmlneu
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      AZURE_SQL_SERVER: ${{ secrets.AZURE_SQL_SERVER }}
+      AZURE_SQL_DATABASE: ${{ secrets.AZURE_SQL_DATABASE }}
       
-  
     steps:
       - name: Checkout to the branch
         uses: actions/checkout@v2
